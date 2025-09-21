@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/stfsy/go-cors"
+	cors "github.com/stfsy/go-cors"
 )
 
 func Hello(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {

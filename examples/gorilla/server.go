@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/stfsy/go-cors"
+	cors "github.com/stfsy/go-cors"
 )
 
 func main() {
