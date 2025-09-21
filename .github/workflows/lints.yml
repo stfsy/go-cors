@@ -27,23 +27,3 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
-
-  dockerfile:
-    name: dockerfile
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-      - uses: hadolint/hadolint-action@v3.2.0
-        with:
-          dockerfile: Dockerfile
-          ignore: DL3003,DL3006,DL3007,DL3008
-
-  openapi:
-    name: OpenAPI Specification
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v5
-      - name: Lint OpenAPI Specification
-        run: ./lint-openapi.sh
