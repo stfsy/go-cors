@@ -194,17 +194,14 @@ func New(options Options) *Cors {
 	// Allowed Methods
 	if len(options.AllowedMethods) == 0 {
 		// Default is spec's "simple" methods
-		c.allowedMethods = []string{http.MethodGet, http.MethodPost, http.MethodHead}
-		c.allowedMethodsMap = make(map[string]struct{}, len(c.allowedMethods))
-		for _, m := range c.allowedMethods {
-			c.allowedMethodsMap[m] = struct{}{}
-		}
+		c.allowedMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
 	} else {
 		c.allowedMethods = options.AllowedMethods
-		c.allowedMethodsMap = make(map[string]struct{}, len(c.allowedMethods))
-		for _, m := range c.allowedMethods {
-			c.allowedMethodsMap[m] = struct{}{}
-		}
+	}
+
+	c.allowedMethodsMap = make(map[string]struct{}, len(c.allowedMethods))
+	for _, m := range c.allowedMethods {
+		c.allowedMethodsMap[m] = struct{}{}
 	}
 
 	// Options Success Status Code
