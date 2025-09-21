@@ -151,33 +151,42 @@ func trimOWS(s string, n int) (trimmed string, ok bool) {
 
 func trimLeftOWS(s string, n int) (string, bool) {
 	sCopy := s
-	var i int
-	for len(s) > 0 {
-		if i > n {
-			return sCopy, false
-		}
-		if !(s[0] == ' ' || s[0] == '\t') {
-			break
-		}
-		s = s[1:]
+	l := len(s)
+	if l == 0 {
+		return s, true
+	}
+	// Inspect at most n+1 leading bytes to decide success/failure.
+	max := n + 1
+	if max > l {
+		max = l
+	}
+	i := 0
+	for i < max && (s[i] == ' ' || s[i] == '\t') {
 		i++
 	}
-	return s, true
+	if i > n {
+		return sCopy, false
+	}
+	return s[i:], true
 }
 
 func trimRightOWS(s string, n int) (string, bool) {
 	sCopy := s
-	var i int
-	for len(s) > 0 {
-		if i > n {
-			return sCopy, false
-		}
-		last := len(s) - 1
-		if !(s[last] == ' ' || s[last] == '\t') {
-			break
-		}
-		s = s[:last]
+	l := len(s)
+	if l == 0 {
+		return s, true
+	}
+	// Inspect at most n+1 trailing bytes to decide success/failure.
+	max := n + 1
+	if max > l {
+		max = l
+	}
+	i := 0
+	for i < max && (s[l-1-i] == ' ' || s[l-1-i] == '\t') {
 		i++
 	}
-	return s, true
+	if i > n {
+		return sCopy, false
+	}
+	return s[:l-i], true
 }
