@@ -153,10 +153,10 @@ github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef h1:NKxTG6GVGbfMXc2m
 github.com/psanford/memfs v0.0.0-20210214183328-a001468d78ef/go.mod h1:tcaRap0jS3eifrEEllL6ZMd9dg8IlDpi2S1oARrQ+NI=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
-github.com/rs/cors v1.11.0 h1:0B9GE/r9Bc2UxRMMtymBkHTenPkHDv0CW4Y98GBY+po=
-github.com/rs/cors v1.11.0/go.mod h1:XyqrcTp5zjWr1wsJ8PIRZssZ8b/WMcMf71DJnit4EMU=
-github.com/rs/cors/wrapper/gin v0.0.0-20240428121854-85fc0cac7b03 h1:s7fD08L5WjfD/iFHrOOp9gmAAGcv2nWPEIJLEn07XDQ=
-github.com/rs/cors/wrapper/gin v0.0.0-20240428121854-85fc0cac7b03/go.mod h1:742Ialb8SOs5yB2PqRDzFcyND3280PoaS5/wcKQUQKE=
+github.com/stfsy/go-cors v1.11.0 h1:0B9GE/r9Bc2UxRMMtymBkHTenPkHDv0CW4Y98GBY+po=
+github.com/stfsy/go-cors v1.11.0/go.mod h1:XyqrcTp5zjWr1wsJ8PIRZssZ8b/WMcMf71DJnit4EMU=
+github.com/stfsy/go-cors/wrapper/gin v0.0.0-20240428121854-85fc0cac7b03 h1:s7fD08L5WjfD/iFHrOOp9gmAAGcv2nWPEIJLEn07XDQ=
+github.com/stfsy/go-cors/wrapper/gin v0.0.0-20240428121854-85fc0cac7b03/go.mod h1:742Ialb8SOs5yB2PqRDzFcyND3280PoaS5/wcKQUQKE=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sergi/go-diff v1.2.0 h1:XU+rvMAioB0UC3q1MFrIQy4Vo5/4VsRDQQXHsEya6xQ=
 github.com/sergi/go-diff v1.2.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=

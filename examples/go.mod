@@ -1,4 +1,4 @@
-module github.com/rs/cors/examples
+module github.com/stfsy/go-cors/examples
 
 go 1.22.2
 
@@ -12,8 +12,8 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/justinas/alice v1.2.0
 	github.com/martini-contrib/render v0.0.0-20150707142108-ec18f8345a11
-	github.com/rs/cors v1.11.0
-	github.com/rs/cors/wrapper/gin v0.0.0-20240428121854-85fc0cac7b03
+	github.com/stfsy/go-cors v1.11.0
+	github.com/stfsy/go-cors/wrapper/gin v0.0.0-20240428121854-85fc0cac7b03
 	github.com/zenazn/goji v1.0.1
 )
 

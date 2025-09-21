@@ -5,7 +5,7 @@ import (
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo/render"
-	"github.com/rs/cors"
+	"github.com/stfsy/go-cors"
 )
 
 var r *render.Engine

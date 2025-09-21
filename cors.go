@@ -27,7 +27,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rs/cors/internal"
+	"github.com/stfsy/go-cors/internal"
 )
 
 var headerVaryOrigin = []string{"Origin"}
@@ -335,8 +335,8 @@ func (c *Cors) handlePreflight(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Always set Vary headers
-	// see https://github.com/rs/cors/issues/10,
-	//     https://github.com/rs/cors/commit/dbdca4d95feaa7511a46e6f1efb3b3aa505bc43f#commitcomment-12352001
+	// see https://github.com/stfsy/go-cors/issues/10,
+	//     https://github.com/stfsy/go-cors/commit/dbdca4d95feaa7511a46e6f1efb3b3aa505bc43f#commitcomment-12352001
 	if vary, found := headers["Vary"]; found {
 		headers["Vary"] = append(vary, c.preflightVary[0])
 	} else {
@@ -365,7 +365,7 @@ func (c *Cors) handlePreflight(w http.ResponseWriter, r *http.Request) {
 	// Access-Control-Request-Headers header is present in the preflight request;
 	// see step 5.2 in https://fetch.spec.whatwg.org/#cors-preflight-fetch-0.
 	// However, some gateways split that header into multiple headers of the same name;
-	// see https://github.com/rs/cors/issues/184.
+	// see https://github.com/stfsy/go-cors/issues/184.
 	reqHeaders, found := r.Header["Access-Control-Request-Headers"]
 	if found && !c.allowedHeadersAll && !c.allowedHeaders.Accepts(reqHeaders) {
 		c.logf("  Preflight aborted: headers '%v' not allowed", reqHeaders)
@@ -403,7 +403,7 @@ func (c *Cors) handleActualRequest(w http.ResponseWriter, r *http.Request) {
 
 	allowed, additionalVaryHeaders := c.isOriginAllowed(r, origin)
 
-	// Always set Vary, see https://github.com/rs/cors/issues/10
+	// Always set Vary, see https://github.com/stfsy/go-cors/issues/10
 	if vary := headers["Vary"]; vary == nil {
 		headers["Vary"] = headerVaryOrigin
 	} else {
