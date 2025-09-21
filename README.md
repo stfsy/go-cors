@@ -25,7 +25,7 @@ func main() {
     // cors.Default() sets up the middleware with sensible defaults (simple
     // methods and default allowed headers). Note: by design the library does
     // not enable a match-all origin by default; you must set explicit
-    // `AllowedOrigins` or provide an `AllowOriginFunc`.
+    // `AllowedOrigins` or provide an `AllowOriginVaryRequestFunc`.
     handler := cors.Default().Handler(mux)
     http.ListenAndServe(":8080", handler)
 }
@@ -52,10 +52,10 @@ The server now runs on `localhost:8080`:
 
 ### Allowing all origins intentionally
 
-The library does not treat `"*"` in `AllowedOrigins` as a special match-all token anymore. If you intentionally want to allow every origin, provide an explicit function such as:
+The library does not treat `"*"` in `AllowedOrigins` as a special match-all token anymore. If you intentionally want to allow every origin, provide an explicit function such as `AllowOriginVaryRequestFunc`:
 
 ```go
-AllowOriginFunc: func(origin string) bool { return true },
+AllowOriginVaryRequestFunc: func(r *http.Request, origin string) (bool, []string) { return true, nil },
 ```
 
 This makes the behavior explicit and avoids accidental insecure configurations (for example, pairing `"*"` with `AllowCredentials: true`).
@@ -89,11 +89,8 @@ c := cors.New(cors.Options{
 handler = c.Handler(handler)
 ```
 
-* **AllowedOrigins** `[]string`: A list of origins a cross-domain request can be executed from. If the special `*` value is present in the list, all origins will be allowed. An origin may contain a wildcard (`*`) to replace 0 or more characters (i.e.: `http://*.domain.com`). Usage of wildcards implies a small performance penality. Only one wildcard can be used per origin. The default value is `*`.
-* **AllowOriginFunc** `func (origin string) bool`: A custom function to validate the origin. It takes the origin as an argument and returns true if allowed, or false otherwise. If this option is set, the content of `AllowedOrigins` is ignored.
-* **AllowOriginRequestFunc** `func (r *http.Request, origin string) bool`: A custom function to validate the origin. It takes the HTTP Request object and the origin as argument and returns true if allowed or false otherwise. If this option is set, the contents of `AllowedOrigins` and `AllowOriginFunc` are ignored.
-Deprecated: use `AllowOriginVaryRequestFunc` instead.
-* **AllowOriginVaryRequestFunc** `func(r *http.Request, origin string) (bool, []string)`: A custom function to validate the origin. It takes the HTTP Request object and the origin as argument and returns true if allowed or false otherwise with a list of headers used to take that decision if any so they can be added to the Vary header. If this option is set, the contents of `AllowedOrigins`, `AllowOriginFunc` and `AllowOriginRequestFunc` are ignored.
+* **AllowedOrigins** `[]string`: A list of origins a cross-domain request can be executed from. An origin may contain a wildcard (`*`) to replace 0 or more characters (i.e.: `http://*.domain.com`). Usage of wildcards implies a small performance penality. Only one wildcard can be used per origin. By design the library does not treat the literal `"*"` as a special match-all token; if you need to allow all origins, provide an explicit `AllowOriginVaryRequestFunc`.
+* **AllowOriginVaryRequestFunc** `func(r *http.Request, origin string) (bool, []string)`: A custom function to validate the origin. It takes the HTTP Request object and the origin as argument and returns true if allowed or false otherwise with a list of headers used to take that decision if any so they can be added to the Vary header. If this option is set, the contents of `AllowedOrigins` are ignored.
 * **AllowedMethods** `[]string`: A list of methods the client is allowed to use with cross-domain requests. Default value is simple methods (`GET` and `POST`).
 * **AllowedHeaders** `[]string`: A list of non simple headers the client is allowed to use with cross-domain requests.
 * **ExposedHeaders** `[]string`: Indicates which headers are safe to expose to the API of a CORS API specification.

@@ -40,27 +40,15 @@ type Options struct {
 	// (i.e.: http://*.domain.com). Usage of wildcards implies a small performance penalty.
 	// Only one wildcard can be used per origin.
 	// Default value is [] (no allowed origins - you must set at least one origin or
-	// provide AllowOriginFunc / AllowOriginVaryRequestFunc).
+	// provide AllowOriginVaryRequestFunc).
 	AllowedOrigins []string
-	// AllowOriginFunc is a custom function to validate the origin. It take the
-	// origin as argument and returns true if allowed or false otherwise. If
-	// this option is set, the content of `AllowedOrigins` is ignored.
-	AllowOriginFunc func(origin string) bool
-	// AllowOriginRequestFunc is a custom function to validate the origin. It
-	// takes the HTTP Request object and the origin as argument and returns true
-	// if allowed or false otherwise. If headers are used take the decision,
-	// consider using AllowOriginVaryRequestFunc instead. If this option is set,
-	// the contents of `AllowedOrigins`, `AllowOriginFunc` are ignored.
-	//
-	// Deprecated: use `AllowOriginVaryRequestFunc` instead.
-	AllowOriginRequestFunc func(r *http.Request, origin string) bool
 	// AllowOriginVaryRequestFunc is a custom function to validate the origin.
 	// It takes the HTTP Request object and the origin as argument and returns
 	// true if allowed or false otherwise with a list of headers used to take
 	// that decision if any so they can be added to the Vary header. If this
-	// option is set, the contents of `AllowedOrigins`, `AllowOriginFunc` and
-	// `AllowOriginRequestFunc` are ignored.
+	// option is set, the contents of `AllowedOrigins` are ignored.
 	AllowOriginVaryRequestFunc func(r *http.Request, origin string) (bool, []string)
+	// AllowOriginVaryRequestFunc is supported and will be used when provided.
 	// AllowedMethods is a list of methods the client is allowed to use with
 	// cross-domain requests. Default value is simple methods (HEAD, GET and POST).
 	AllowedMethods []string
@@ -109,7 +97,7 @@ type Cors struct {
 	allowedOrigins []string
 	// List of allowed origins containing wildcards
 	allowedWOrigins []wildcard
-	// Optional origin validator function
+	// Optional origin validator function (AllowOriginVaryRequestFunc signature)
 	allowOriginFunc func(r *http.Request, origin string) (bool, []string)
 	// Normalized list of allowed headers
 	// Note: the Fetch standard guarantees that CORS-unsafe request-header names
@@ -124,7 +112,7 @@ type Cors struct {
 	// Pre-computed maxAge header value
 	maxAge []string
 	// Note: there is no special match-all origin. If you need to allow every
-	// origin, use `AllowOriginFunc` or `AllowOriginVaryRequestFunc`.
+	// origin, use `AllowOriginVaryRequestFunc`.
 	// Set to true when allowed headers contains a "*"
 	allowedHeadersAll bool
 	// Status code to use for successful OPTIONS requests
@@ -151,18 +139,10 @@ func New(options Options) *Cors {
 	switch {
 	case options.AllowOriginVaryRequestFunc != nil:
 		c.allowOriginFunc = options.AllowOriginVaryRequestFunc
-	case options.AllowOriginRequestFunc != nil:
-		c.allowOriginFunc = func(r *http.Request, origin string) (bool, []string) {
-			return options.AllowOriginRequestFunc(r, origin), nil
-		}
-	case options.AllowOriginFunc != nil:
-		c.allowOriginFunc = func(r *http.Request, origin string) (bool, []string) {
-			return options.AllowOriginFunc(origin), nil
-		}
 	case len(options.AllowedOrigins) == 0:
 		// No explicit origins configured. By design this library requires
 		// explicit origins to be set; leave allowedOrigins nil (no origins allowed)
-		// unless an AllowOrigin* function is provided.
+		// unless an AllowOriginVaryRequestFunc is provided.
 	default:
 		c.allowedOrigins = []string{}
 		c.allowedWOrigins = []wildcard{}
@@ -334,14 +314,21 @@ func (c *Cors) handlePreflight(w http.ResponseWriter, r *http.Request) {
 	// Always set Vary headers
 	// see https://github.com/stfsy/go-cors/issues/10,
 	//     https://github.com/stfsy/go-cors/commit/dbdca4d95feaa7511a46e6f1efb3b3aa505bc43f#commitcomment-12352001
+	// Initialize Vary with the preflight base value and merge additional
+	// vary headers returned by allowOriginFunc below. We merge into a single
+	// header value to avoid multiple Vary header entries and to ensure
+	// deterministic ordering and deduplication.
 	if vary, found := headers["Vary"]; found {
-		headers["Vary"] = append(vary, c.preflightVary[0])
+		// ensure the first element contains the preflight base
+		if len(vary) > 0 && !strings.Contains(vary[0], c.preflightVary[0]) {
+			headers["Vary"] = append([]string{c.preflightVary[0]}, vary...)
+		}
 	} else {
 		headers["Vary"] = c.preflightVary
 	}
 	allowed, additionalVaryHeaders := c.isOriginAllowed(r, origin)
 	if len(additionalVaryHeaders) > 0 {
-		headers.Add("Vary", strings.Join(convert(additionalVaryHeaders, http.CanonicalHeaderKey), ", "))
+		mergeVary(headers, additionalVaryHeaders)
 	}
 
 	if origin == "" {
@@ -401,11 +388,9 @@ func (c *Cors) handleActualRequest(w http.ResponseWriter, r *http.Request) {
 	// Always set Vary, see https://github.com/stfsy/go-cors/issues/10
 	if vary := headers["Vary"]; vary == nil {
 		headers["Vary"] = headerVaryOrigin
-	} else {
-		headers["Vary"] = append(vary, headerVaryOrigin[0])
 	}
 	if len(additionalVaryHeaders) > 0 {
-		headers.Add("Vary", strings.Join(convert(additionalVaryHeaders, http.CanonicalHeaderKey), ", "))
+		mergeVary(headers, additionalVaryHeaders)
 	}
 	if origin == "" {
 		c.logf("  Actual request no headers added: missing origin")
@@ -440,6 +425,45 @@ func (c *Cors) logf(format string, a ...interface{}) {
 	if c.Log != nil {
 		c.Log.Printf(format, a...)
 	}
+}
+
+// mergeVary merges additional headers into the Vary header, ensuring a single
+// Vary header entry with deduplicated, comma-separated tokens.
+func mergeVary(h http.Header, additional []string) {
+	// collect existing tokens
+	var tokens []string
+	if v := h.Get("Vary"); v != "" {
+		for _, t := range strings.Split(v, ",") {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				tokens = append(tokens, t)
+			}
+		}
+	}
+	// add additional tokens
+	for _, a := range additional {
+		for _, t := range strings.Split(a, ",") {
+			tt := strings.TrimSpace(t)
+			if tt == "" {
+				continue
+			}
+			// check for duplicates
+			found := false
+			for _, existing := range tokens {
+				if strings.EqualFold(existing, tt) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				tokens = append(tokens, tt)
+			}
+		}
+	}
+	if len(tokens) == 0 {
+		return
+	}
+	h.Set("Vary", strings.Join(tokens, ", "))
 }
 
 // check the Origin of a request. No origin at all is also allowed.

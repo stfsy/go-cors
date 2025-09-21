@@ -93,7 +93,7 @@ func TestSpec(t *testing.T) {
 			"MatchAllOrigin",
 			Options{
 				// Use explicit function to allow all origins instead of special "*" token
-				AllowOriginFunc: func(o string) bool { return true },
+				AllowOriginVaryRequestFunc: func(r *http.Request, o string) (bool, []string) { return true, nil },
 			},
 			"GET",
 			http.Header{
@@ -108,8 +108,8 @@ func TestSpec(t *testing.T) {
 		{
 			"MatchAllOriginWithCredentials",
 			Options{
-				AllowOriginFunc:  func(o string) bool { return true },
-				AllowCredentials: true,
+				AllowOriginVaryRequestFunc: func(r *http.Request, o string) (bool, []string) { return true, nil },
+				AllowCredentials:           true,
 			},
 			"GET",
 			http.Header{
@@ -183,8 +183,8 @@ func TestSpec(t *testing.T) {
 		{
 			"AllowedOriginFuncMatch",
 			Options{
-				AllowOriginFunc: func(o string) bool {
-					return regexp.MustCompile("^http://foo").MatchString(o)
+				AllowOriginVaryRequestFunc: func(r *http.Request, o string) (bool, []string) {
+					return regexp.MustCompile("^http://foo").MatchString(o), nil
 				},
 			},
 			"GET",
@@ -198,10 +198,10 @@ func TestSpec(t *testing.T) {
 			true,
 		},
 		{
-			"AllowOriginRequestFuncMatch",
+			"AllowOriginVaryRequestFuncMatch",
 			Options{
-				AllowOriginRequestFunc: func(r *http.Request, o string) bool {
-					return regexp.MustCompile("^http://foo").MatchString(o) && r.Header.Get("Authorization") == "secret"
+				AllowOriginVaryRequestFunc: func(r *http.Request, o string) (bool, []string) {
+					return regexp.MustCompile("^http://foo").MatchString(o) && r.Header.Get("Authorization") == "secret", []string{}
 				},
 			},
 			"GET",
@@ -234,10 +234,10 @@ func TestSpec(t *testing.T) {
 			true,
 		},
 		{
-			"AllowOriginRequestFuncNotMatch",
+			"AllowOriginVaryRequestFuncNotMatch",
 			Options{
-				AllowOriginRequestFunc: func(r *http.Request, o string) bool {
-					return regexp.MustCompile("^http://foo").MatchString(o) && r.Header.Get("Authorization") == "secret"
+				AllowOriginVaryRequestFunc: func(r *http.Request, o string) (bool, []string) {
+					return regexp.MustCompile("^http://foo").MatchString(o) && r.Header.Get("Authorization") == "secret", []string{}
 				},
 			},
 			"GET",
@@ -505,12 +505,10 @@ func TestSpec(t *testing.T) {
 			},
 			true,
 		}, {
-			"AllowedOriginsPlusAllowOriginFunc",
+			"AllowedOriginsPlusAllowOriginVaryFunc",
 			Options{
-				AllowedOrigins: []string{"*"},
-				AllowOriginFunc: func(origin string) bool {
-					return true
-				},
+				AllowedOrigins:             []string{"*"},
+				AllowOriginVaryRequestFunc: func(r *http.Request, origin string) (bool, []string) { return true, nil },
 			},
 			"GET",
 			http.Header{
