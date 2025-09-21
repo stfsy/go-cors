@@ -1,4 +1,4 @@
-# Go CORS handler [![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/stfsy/go-cors) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/stfsy/go-cors/master/LICENSE) [![Go Coverage](https://github.com/stfsy/go-cors/wiki/coverage.svg)](https://raw.githack.com/wiki/stfsy/go-cors/coverage.html)
+# Go CORS handler 
 
 CORS is a `net/http` handler implementing [Cross Origin Resource Sharing W3 specification](http://www.w3.org/TR/cors/) in Golang.
 
