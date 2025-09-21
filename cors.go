@@ -31,17 +31,16 @@ import (
 )
 
 var headerVaryOrigin = []string{"Origin"}
-var headerOriginAll = []string{"*"}
 var headerTrue = []string{"true"}
 
 // Options is a configuration container to setup the CORS middleware.
 type Options struct {
 	// AllowedOrigins is a list of origins a cross-domain request can be executed from.
-	// If the special "*" value is present in the list, all origins will be allowed.
 	// An origin may contain a wildcard (*) to replace 0 or more characters
 	// (i.e.: http://*.domain.com). Usage of wildcards implies a small performance penalty.
 	// Only one wildcard can be used per origin.
-	// Default value is ["*"]
+	// Default value is [] (no allowed origins - you must set at least one origin or
+	// provide AllowOriginFunc / AllowOriginVaryRequestFunc).
 	AllowedOrigins []string
 	// AllowOriginFunc is a custom function to validate the origin. It take the
 	// origin as argument and returns true if allowed or false otherwise. If
@@ -124,8 +123,8 @@ type Cors struct {
 	exposedHeaders []string
 	// Pre-computed maxAge header value
 	maxAge []string
-	// Set to true when allowed origins contains a "*"
-	allowedOriginsAll bool
+	// Note: there is no special match-all origin. If you need to allow every
+	// origin, use `AllowOriginFunc` or `AllowOriginVaryRequestFunc`.
 	// Set to true when allowed headers contains a "*"
 	allowedHeadersAll bool
 	// Status code to use for successful OPTIONS requests
@@ -161,10 +160,9 @@ func New(options Options) *Cors {
 			return options.AllowOriginFunc(origin), nil
 		}
 	case len(options.AllowedOrigins) == 0:
-		if c.allowOriginFunc == nil {
-			// Default is all origins
-			c.allowedOriginsAll = true
-		}
+		// No explicit origins configured. By design this library requires
+		// explicit origins to be set; leave allowedOrigins nil (no origins allowed)
+		// unless an AllowOrigin* function is provided.
 	default:
 		c.allowedOrigins = []string{}
 		c.allowedWOrigins = []wildcard{}
@@ -173,12 +171,11 @@ func New(options Options) *Cors {
 			// As it may error prone, we chose to ignore the spec here.
 			origin = strings.ToLower(origin)
 			if origin == "*" {
-				// If "*" is present in the list, turn the whole list into a match all
-				c.allowedOriginsAll = true
-				c.allowedOrigins = nil
-				c.allowedWOrigins = nil
-				break
-			} else if i := strings.IndexByte(origin, '*'); i >= 0 {
+				// The special wildcard origin is no longer treated as "match-all".
+				// Skip it to avoid accidental permissive configuration.
+				continue
+			}
+			if i := strings.IndexByte(origin, '*'); i >= 0 {
 				// Split the origin in two: start and end string without the *
 				w := wildcard{origin[0:i], origin[i+1:]}
 				c.allowedWOrigins = append(c.allowedWOrigins, w)
@@ -371,11 +368,9 @@ func (c *Cors) handlePreflight(w http.ResponseWriter, r *http.Request) {
 		c.logf("  Preflight aborted: headers '%v' not allowed", reqHeaders)
 		return
 	}
-	if c.allowedOriginsAll {
-		headers["Access-Control-Allow-Origin"] = headerOriginAll
-	} else {
-		headers["Access-Control-Allow-Origin"] = r.Header["Origin"]
-	}
+	// Always echo the request Origin when the origin is allowed. The library
+	// no longer supports a special match-all origin token.
+	headers["Access-Control-Allow-Origin"] = r.Header["Origin"]
 	// Spec says: Since the list of methods can be unbounded, simply returning the method indicated
 	// by Access-Control-Request-Method (if supported) can be enough
 	headers["Access-Control-Allow-Methods"] = r.Header["Access-Control-Request-Method"]
@@ -429,11 +424,8 @@ func (c *Cors) handleActualRequest(w http.ResponseWriter, r *http.Request) {
 		c.logf("  Actual request no headers added: method '%s' not allowed", r.Method)
 		return
 	}
-	if c.allowedOriginsAll {
-		headers["Access-Control-Allow-Origin"] = headerOriginAll
-	} else {
-		headers["Access-Control-Allow-Origin"] = r.Header["Origin"]
-	}
+	// Always echo the request Origin when the origin is allowed.
+	headers["Access-Control-Allow-Origin"] = r.Header["Origin"]
 	if len(c.exposedHeaders) > 0 {
 		headers["Access-Control-Expose-Headers"] = c.exposedHeaders
 	}
@@ -462,9 +454,6 @@ func (c *Cors) OriginAllowed(r *http.Request) bool {
 func (c *Cors) isOriginAllowed(r *http.Request, origin string) (allowed bool, varyHeaders []string) {
 	if c.allowOriginFunc != nil {
 		return c.allowOriginFunc(r, origin)
-	}
-	if c.allowedOriginsAll {
-		return true, nil
 	}
 	origin = strings.ToLower(origin)
 	for _, o := range c.allowedOrigins {

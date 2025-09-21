@@ -87,12 +87,13 @@ func TestSpec(t *testing.T) {
 			http.Header{
 				"Vary": {"Origin"},
 			},
-			true,
+			false,
 		},
 		{
 			"MatchAllOrigin",
 			Options{
-				AllowedOrigins: []string{"*"},
+				// Use explicit function to allow all origins instead of special "*" token
+				AllowOriginFunc: func(o string) bool { return true },
 			},
 			"GET",
 			http.Header{
@@ -100,14 +101,14 @@ func TestSpec(t *testing.T) {
 			},
 			http.Header{
 				"Vary":                        {"Origin"},
-				"Access-Control-Allow-Origin": {"*"},
+				"Access-Control-Allow-Origin": {"http://foobar.com"},
 			},
 			true,
 		},
 		{
 			"MatchAllOriginWithCredentials",
 			Options{
-				AllowedOrigins:   []string{"*"},
+				AllowOriginFunc:  func(o string) bool { return true },
 				AllowCredentials: true,
 			},
 			"GET",
@@ -116,7 +117,7 @@ func TestSpec(t *testing.T) {
 			},
 			http.Header{
 				"Vary":                             {"Origin"},
-				"Access-Control-Allow-Origin":      {"*"},
+				"Access-Control-Allow-Origin":      {"http://foobar.com"},
 				"Access-Control-Allow-Credentials": {"true"},
 			},
 			true,
@@ -485,11 +486,9 @@ func TestSpec(t *testing.T) {
 				"Access-Control-Request-Method": {"GET"},
 			},
 			http.Header{
-				"Vary":                         {"Origin, Access-Control-Request-Method, Access-Control-Request-Headers"},
-				"Access-Control-Allow-Origin":  {"*"},
-				"Access-Control-Allow-Methods": {"GET"},
+				"Vary": {"Origin, Access-Control-Request-Method, Access-Control-Request-Headers"},
 			},
-			true,
+			false,
 		},
 		{
 			"NonPreflightOptions",
@@ -638,16 +637,13 @@ func TestLogger(t *testing.T) {
 func TestDefault(t *testing.T) {
 	s := Default()
 	if s.Log != nil {
-		t.Error("c.log should be nil when Default")
-	}
-	if !s.allowedOriginsAll {
-		t.Error("c.allowedOriginsAll should be true when Default")
+		t.Error("Default should not set a logger")
 	}
 	if s.allowedHeaders.Size() == 0 {
-		t.Error("c.allowedHeaders should be empty when Default")
+		t.Error("Default should set some allowed headers")
 	}
 	if s.allowedMethods == nil {
-		t.Error("c.allowedMethods should be nil when Default")
+		t.Error("Default should set some allowed methods")
 	}
 }
 
@@ -785,13 +781,17 @@ func TestAccessControlExposeHeadersPresence(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:    "omit",
-			options: Options{},
+			name: "omit",
+			// Require an explicit allowed origin in tests now that the
+			// library requires origins to be configured instead of defaulting
+			// to allow-all. The request below uses Origin: http://foobar.com
+			options: Options{AllowedOrigins: []string{"http://foobar.com"}},
 			want:    false,
 		},
 		{
 			name: "include",
 			options: Options{
+				AllowedOrigins: []string{"http://foobar.com"},
 				ExposedHeaders: []string{"X-Something"},
 			},
 			want: true,

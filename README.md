@@ -22,9 +22,10 @@ func main() {
         w.Write([]byte("{\"hello\": \"world\"}"))
     })
 
-    // cors.Default() setup the middleware with default options being
-    // all origins accepted with simple methods (GET, POST). See
-    // documentation below for more options.
+    // cors.Default() sets up the middleware with sensible defaults (simple
+    // methods and default allowed headers). Note: by design the library does
+    // not enable a match-all origin by default; you must set explicit
+    // `AllowedOrigins` or provide an `AllowOriginFunc`.
     handler := cors.Default().Handler(mux)
     http.ListenAndServe(":8080", handler)
 }
@@ -49,13 +50,15 @@ The server now runs on `localhost:8080`:
 
     {"hello": "world"}
 
-### Allow * With Credentials Security Protection
+### Allowing all origins intentionally
 
-This library has been modified to avoid a well known security issue when configured with `AllowedOrigins` to `*` and `AllowCredentials` to `true`. Such setup used to make the library reflects the request `Origin` header value, working around a security protection embedded into the standard that makes clients to refuse such configuration. This behavior has been removed with [#55](https://github.com/stfsy/go-cors/issues/55) and [#57](https://github.com/stfsy/go-cors/issues/57).
+The library does not treat `"*"` in `AllowedOrigins` as a special match-all token anymore. If you intentionally want to allow every origin, provide an explicit function such as:
 
-If you depend on this behavior and understand the implications, you can restore it using the `AllowOriginFunc` with `func(origin string) {return true}`.
+```go
+AllowOriginFunc: func(origin string) bool { return true },
+```
 
-Please refer to [#55](https://github.com/stfsy/go-cors/issues/55) for more information about the security implications.
+This makes the behavior explicit and avoids accidental insecure configurations (for example, pairing `"*"` with `AllowCredentials: true`).
 
 ### More Examples
 
