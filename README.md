@@ -2,6 +2,14 @@
 
 CORS is a `net/http` handler implementing [Cross Origin Resource Sharing W3 specification](http://www.w3.org/TR/cors/) in Golang.
 
+This is a fork of https://github.com/rs/cors with some minor performance improvements and more opinionated default configuration.
+
+The main changes
+- Cleaner API, kept only one option for allowing an origin dynamically: `AllowOriginVaryRequestFunc`
+- Updated default allowed HTTP methods: `GET`, `POST`, `PATCH`, `PUT`, `DELETE`
+- Updated default allowed headers: `Accept`, `Content-Type`
+- Removed support for wildcard `*` in `AllowedOrigins` to avoid accidental insecure configurations
+
 ## Getting Started
 
 After installing Go and setting up your [GOPATH](http://golang.org/doc/code.html#GOPATH), create your first `.go` file. We'll call it `server.go`.
