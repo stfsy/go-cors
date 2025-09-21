@@ -352,15 +352,13 @@ func TestSpec(t *testing.T) {
 			},
 			"OPTIONS",
 			http.Header{
-				"Origin":                         {"http://foobar.com"},
-				"Access-Control-Request-Method":  {"GET"},
-				"Access-Control-Request-Headers": {"x-requested-with"},
+				"Origin":                        {"http://foobar.com"},
+				"Access-Control-Request-Method": {"GET"},
 			},
 			http.Header{
 				"Vary":                         {"Origin, Access-Control-Request-Method, Access-Control-Request-Headers"},
 				"Access-Control-Allow-Origin":  {"http://foobar.com"},
 				"Access-Control-Allow-Methods": {"GET"},
-				"Access-Control-Allow-Headers": {"x-requested-with"},
 			},
 			true,
 		},

@@ -178,7 +178,7 @@ func New(options Options) *Cors {
 	// are lowercase; see https://fetch.spec.whatwg.org/#cors-unsafe-request-header-names.
 	if len(options.AllowedHeaders) == 0 {
 		// Use sensible defaults
-		c.allowedHeaders = internal.NewSortedSet("accept", "content-type", "x-requested-with")
+		c.allowedHeaders = internal.NewSortedSet("accept", "content-type")
 	} else {
 		normalized := convert(options.AllowedHeaders, strings.ToLower)
 		c.allowedHeaders = internal.NewSortedSet(normalized...)
