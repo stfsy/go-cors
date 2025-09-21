@@ -20,7 +20,7 @@ package main
 import (
     "net/http"
 
-    "github.com/stfsy/go-cors"
+    cors "github.com/stfsy/go-cors"
 )
 
 func main() {
