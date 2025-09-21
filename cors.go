@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -97,6 +98,8 @@ type Cors struct {
 	allowedOrigins []string
 	// List of allowed origins containing wildcards
 	allowedWOrigins []wildcard
+	// Fast lookup map for plain allowed origins (normalized to lower-case)
+	allowedOriginsMap map[string]struct{}
 	// Optional origin validator function (AllowOriginVaryRequestFunc signature)
 	allowOriginFunc func(r *http.Request, origin string) (bool, []string)
 	// Normalized list of allowed headers
@@ -107,6 +110,8 @@ type Cors struct {
 	allowedHeaders internal.SortedSet
 	// Normalized list of allowed methods
 	allowedMethods []string
+	// Fast lookup map for allowed methods
+	allowedMethodsMap map[string]struct{}
 	// Pre-computed normalized list of exposed headers
 	exposedHeaders []string
 	// Pre-computed maxAge header value
@@ -146,6 +151,7 @@ func New(options Options) *Cors {
 	default:
 		c.allowedOrigins = []string{}
 		c.allowedWOrigins = []wildcard{}
+		c.allowedOriginsMap = make(map[string]struct{})
 		for _, origin := range options.AllowedOrigins {
 			// Note: for origins matching, the spec requires a case-sensitive matching.
 			// As it may error prone, we chose to ignore the spec here.
@@ -161,6 +167,7 @@ func New(options Options) *Cors {
 				c.allowedWOrigins = append(c.allowedWOrigins, w)
 			} else {
 				c.allowedOrigins = append(c.allowedOrigins, origin)
+				c.allowedOriginsMap[origin] = struct{}{}
 			}
 		}
 	}
@@ -175,7 +182,7 @@ func New(options Options) *Cors {
 	} else {
 		normalized := convert(options.AllowedHeaders, strings.ToLower)
 		c.allowedHeaders = internal.NewSortedSet(normalized...)
-		for _, h := range options.AllowedHeaders {
+		for _, h := range normalized {
 			if h == "*" {
 				c.allowedHeadersAll = true
 				c.allowedHeaders = internal.SortedSet{}
@@ -188,8 +195,16 @@ func New(options Options) *Cors {
 	if len(options.AllowedMethods) == 0 {
 		// Default is spec's "simple" methods
 		c.allowedMethods = []string{http.MethodGet, http.MethodPost, http.MethodHead}
+		c.allowedMethodsMap = make(map[string]struct{}, len(c.allowedMethods))
+		for _, m := range c.allowedMethods {
+			c.allowedMethodsMap[m] = struct{}{}
+		}
 	} else {
 		c.allowedMethods = options.AllowedMethods
+		c.allowedMethodsMap = make(map[string]struct{}, len(c.allowedMethods))
+		for _, m := range c.allowedMethods {
+			c.allowedMethodsMap[m] = struct{}{}
+		}
 	}
 
 	// Options Success Status Code
@@ -430,13 +445,19 @@ func (c *Cors) logf(format string, a ...interface{}) {
 // mergeVary merges additional headers into the Vary header, ensuring a single
 // Vary header entry with deduplicated, comma-separated tokens.
 func mergeVary(h http.Header, additional []string) {
+	// Use a map for deduplication (case-insensitive) to avoid O(n^2) checks
+	tokenSet := make(map[string]string)
 	// collect existing tokens
-	var tokens []string
 	if v := h.Get("Vary"); v != "" {
 		for _, t := range strings.Split(v, ",") {
 			t = strings.TrimSpace(t)
-			if t != "" {
-				tokens = append(tokens, t)
+			if t == "" {
+				continue
+			}
+			lower := strings.ToLower(t)
+			// keep original casing of first seen token
+			if _, exists := tokenSet[lower]; !exists {
+				tokenSet[lower] = t
 			}
 		}
 	}
@@ -447,23 +468,44 @@ func mergeVary(h http.Header, additional []string) {
 			if tt == "" {
 				continue
 			}
-			// check for duplicates
-			found := false
-			for _, existing := range tokens {
-				if strings.EqualFold(existing, tt) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				tokens = append(tokens, tt)
+			lower := strings.ToLower(tt)
+			if _, exists := tokenSet[lower]; !exists {
+				tokenSet[lower] = tt
 			}
 		}
 	}
-	if len(tokens) == 0 {
+	if len(tokenSet) == 0 {
 		return
 	}
-	h.Set("Vary", strings.Join(tokens, ", "))
+	// build deterministic slice in insertion order of map keys -> since map order is random,
+	// preserve preferred order: if header had existing tokens, use those order first, then
+	// additional tokens in the order they are discovered.
+	// Start with original header's order when present.
+	var out []string
+	if v := h.Get("Vary"); v != "" {
+		for _, t := range strings.Split(v, ",") {
+			t = strings.TrimSpace(t)
+			if t == "" {
+				continue
+			}
+			lower := strings.ToLower(t)
+			if val, ok := tokenSet[lower]; ok {
+				out = append(out, val)
+				delete(tokenSet, lower)
+			}
+		}
+	}
+	// append remaining tokens in stable order by sorting keys
+	if len(tokenSet) > 0 {
+		keys := make([]string, 0, len(tokenSet))
+		for _, v := range tokenSet {
+			keys = append(keys, v)
+		}
+		// stable deterministic ordering
+		sort.Strings(keys)
+		out = append(out, keys...)
+	}
+	h.Set("Vary", strings.Join(out, ", "))
 }
 
 // check the Origin of a request. No origin at all is also allowed.
@@ -480,9 +522,15 @@ func (c *Cors) isOriginAllowed(r *http.Request, origin string) (allowed bool, va
 		return c.allowOriginFunc(r, origin)
 	}
 	origin = strings.ToLower(origin)
-	for _, o := range c.allowedOrigins {
-		if o == origin {
+	if c.allowedOriginsMap != nil {
+		if _, ok := c.allowedOriginsMap[origin]; ok {
 			return true, nil
+		}
+	} else {
+		for _, o := range c.allowedOrigins {
+			if o == origin {
+				return true, nil
+			}
 		}
 	}
 	for _, w := range c.allowedWOrigins {
@@ -503,6 +551,10 @@ func (c *Cors) isMethodAllowed(method string) bool {
 	if method == http.MethodOptions {
 		// Always allow preflight requests
 		return true
+	}
+	if c.allowedMethodsMap != nil {
+		_, ok := c.allowedMethodsMap[method]
+		return ok
 	}
 	for _, m := range c.allowedMethods {
 		if m == method {
