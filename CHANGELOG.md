@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/stfsy/go-cors/compare/v1.0.0...v1.1.0) (2025-11-09)
+
+
+### Features
+
+* allow user-agent header too by default ([79dd0b7](https://github.com/stfsy/go-cors/commit/79dd0b7672269659253b078c9bfd292eac54c904))
+
 ## 1.0.0 (2025-09-21)
 
 
