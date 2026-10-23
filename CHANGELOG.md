@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/stfsy/go-cors/compare/v1.1.0...v1.1.1) (2026-10-23)
+
+
+### Miscellaneous Chores
+
+* standardize release-please and stale workflows ([847840b](https://github.com/stfsy/go-cors/commit/847840b74a9df3235cbee22614c96916c0686e9b))
+* standardize release-please and stale workflows ([db72d43](https://github.com/stfsy/go-cors/commit/db72d436fe39e677c665d50a0e09f89e62dd82f2))
+
 ## [1.1.0](https://github.com/stfsy/go-cors/compare/v1.0.0...v1.1.0) (2025-11-09)
 
 
